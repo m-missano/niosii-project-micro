@@ -34,6 +34,10 @@ int main(){
  * r15 : content de TERMINAL_MESSAGE
  * r16 : contador para o TERMINAL_MESSAGE_POLL
  * r17 : armazena o codigo ASCII de \n
+ * r18 : addr de MEMBUFF
+ * r19 : content de MEMBUFF
+ * r20 : addr de MEMBUFF_LENGTH
+ * r21 : content de MEMBUFF_LENGTH (qtd de bytes escritos e ainda nao lidos em MEMBUFF)
  */
 
 /*
@@ -59,7 +63,11 @@ _start:
     movia r14, TERMINAL_MESSAGE # TESTE
     # Armazena o codigo ASCII de \n
     movia r17, 0xA
-
+    # Armazena o endereco de MEMBUFF
+    movia r18, MEMBUFF
+    # Armazena o endereco de MEMBUFF_LENGTH
+    movia r20, MEMBUFF
+    # Carrega conteudo de MEMBUFF
 
 # Polling
 POLLING:
@@ -72,7 +80,7 @@ POLLING:
     ? Possibilidade de criar subrotina para escrita (evitar repeticao) ?
     ! Verificar logica de fim de escrita (beq r15, r0, READ_POLL)
     */
-    # Escreve a entrada no terminal
+    # Escreve a mensagem no terminal
     TERMINAL_MESSAGE_POLL:
         # Carrega o content de Control register
         ldwio r11, 4(r8)
@@ -105,8 +113,11 @@ POLLING:
         andi r10, r9, 0x8000
         # Verifica se esta valido para leitura
         beq r10, r0, READ_POLL
+    
+    MEMBUFF_POLL:
 
-    /*
+
+    /*  
     ? Conteudo da escrita vir de MEMBUFF ao inves do registrador ?
     ? Auxiliaria na implementacao do backspace ?
     */
@@ -132,11 +143,20 @@ END:
 
 .org 0x500
 .data
+
+# Mensagem inicial a ser apresentada no terminal
 TERMINAL_MESSAGE:
-.asciz "Entre com a mensagem aqui: "   
+.asciz "Entre com a mensagem aqui: "
+
 /*
 TODO: Implementar o MEMBUFF
 */
+# Buffer para armazenar as entradas do usuario
+MEMBUFF:
+.skip 1024
+# Quantidade de bytes escrito e ainda nao lidos em MEMBUFF
+MEMBUFF_LENGTH:
+.word 0
 
 .end
 
