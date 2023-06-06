@@ -66,8 +66,9 @@ _start:
     # Armazena o endereco de MEMBUFF
     movia r18, MEMBUFF
     # Armazena o endereco de MEMBUFF_LENGTH
-    movia r20, MEMBUFF
+    movia r20, MEMBUFF_LENGTH
     # Carrega conteudo de MEMBUFF
+    addi r22,r18,0
 
 # Polling
 POLLING:
@@ -113,30 +114,38 @@ POLLING:
         andi r10, r9, 0x8000
         # Verifica se esta valido para leitura
         beq r10, r0, READ_POLL
-    
-    MEMBUFF_POLL:
+        MEMBUFF_POLL:
+            # Obtem dados a serem escritos
+            andi r9,r9,0b11111111
+            # Escreve no MEMBUFF
+            stb r9,0(r22)
 
-
-    /*  
-    ? Conteudo da escrita vir de MEMBUFF ao inves do registrador ?
-    ? Auxiliaria na implementacao do backspace ?
-    */
-    # Escreve a entrada no terminal
-    WRITE_POLL:
-        # Carrega o content de Control register
-        ldwio r11, 4(r8)
-        # Aplica mascara para obter o wspace
-        and r12, r11, r13
-        # Verifica se ha espaco para escrita
-        beq r12, r0, WRITE_POLL
-        # Obtem dados a serem escritos
-        andi r9,r9,0b11111111
-        # Escreve no buffer de escrita
-        stwio r9, 0(r8)
-        # Verifica se o caracter atual é \n
-        beq r9, r17, POLLING
-        # Retorna para aguardar nova entrada
-        br READ_POLL
+        /*  
+        ? Conteudo da escrita vir de MEMBUFF ao inves do registrador ?
+        ? Auxiliaria na implementacao do backspace ?
+        */
+        # Escreve a entrada no terminal
+        WRITE_POLL:
+            # Carrega o content de Control register
+            ldwio r11, 4(r8)
+            # Aplica mascara para obter o wspace
+            and r12, r11, r13
+            # Verifica se ha espaco para escrita
+            beq r12, r0, WRITE_POLL
+            # Carrega o byte salvo no MEMBUFF
+            ldb r9,0(r22)
+            # Escreve no buffer de escrita
+            stwio r9, 0(r8)
+            # Verifica se o caracter atual é \n
+            beq r9, r17, POLLING
+            # Incrementa o contador do MEMBUFF
+            addi r22,r22,1
+            # Verifica o length de MEMBUFF
+            sub r23,r22,r18
+            # Armazena o length em MEMBUFF_LENGTH
+            stw r23,0(r20)
+            # Retorna para aguardar nova entrada
+            br READ_POLL
 
 END:
     br END
@@ -159,4 +168,3 @@ MEMBUFF_LENGTH:
 .word 0
 
 .end
-
