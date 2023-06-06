@@ -131,6 +131,9 @@ LOAD_CODE:
     slli r22, r22, 8
     or r22, r22, r20
 
+    # Avanca o ponteiro do MEMBUFF para apos o opcode
+    addi r19, r19, 2
+
     # Verifica para qual funcao saltar
     cmpeqi r21, r22, 0x0000
         bne r21, r0, CHAMA_ACENDER_LED
@@ -188,7 +191,7 @@ CHAMA_STOP_CHRONOS:
         
 
 END_SWITCH:
-    addi r19, r19, 2
+    # Avanca o ponteiro do MEMBUFF para apos os bytes lidos dentro da subrotina
     add r19, r19, r8
     /*
     TODO: condicao para sair do loop
@@ -210,5 +213,5 @@ END_SWITCH2:
     addi sp, sp, 40
 
     ret
-
+    
 .end
