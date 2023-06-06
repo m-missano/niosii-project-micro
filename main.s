@@ -24,6 +24,7 @@ int main(){
 */
 
 /*
+ * r7 : caracter espaco em ASCI 0x20
  * r8  : addr de Data register
  * r9  : content de Data register
  * r10 : rvalid (bit de validacao de leitura)
@@ -38,23 +39,28 @@ int main(){
  * r19 : content de MEMBUFF
  * r20 : addr de MEMBUFF_LENGTH
  * r21 : content de MEMBUFF_LENGTH (qtd de bytes escritos e ainda nao lidos em MEMBUFF)
+ * r22 : contador de MEMBUFF
  */
 
 /*
 
-   hex     |                  bin                           dec
+   hex     |                    bin                           dec
 0xFFFF0000 | 0b.1111.1111.1111.1111.0000.0000.0000.0000 | undefined
 0x00008000 | 0b.0000.0000.0000.0000.1000.0000.0000.0000 | undefined
 0x0000000A | 0b.0000.0000.0000.0000.0000.0000.0000.1010 |    10
 */
 
 .equ ADDR_DATAREG, 0x10001000
+.equ STACK, 0x1000000
 
 .global _start
+.global MEMBUFF
 
 .text
 
 _start:
+    movia sp, STACK   /* armazena em sp o endereço da STACK */
+    mov fp, sp        /* seta o frame pointer */
     # Armazena o endereco de Data register
     movia r8, ADDR_DATAREG
     # Armazena a mascara para a operacao de 32 bits
@@ -69,6 +75,9 @@ _start:
     movia r20, MEMBUFF_LENGTH
     # Carrega conteudo de MEMBUFF
     addi r22,r18,0
+
+    # Armazena o codigo ASCII de Space
+    movia r7, 0x20 
 
 # Polling
 POLLING:
@@ -117,6 +126,7 @@ POLLING:
         MEMBUFF_POLL:
             # Obtem dados a serem escritos
             andi r9,r9,0b11111111
+            beq r7, r9, READ_POLL
             # Escreve no MEMBUFF
             stb r9,0(r22)
 
@@ -137,15 +147,21 @@ POLLING:
             # Escreve no buffer de escrita
             stwio r9, 0(r8)
             # Verifica se o caracter atual é \n
-            beq r9, r17, POLLING
+            beq r9, r17, PARSER
             # Incrementa o contador do MEMBUFF
             addi r22,r22,1
             # Verifica o length de MEMBUFF
-            sub r23,r22,r18
+            sub r21,r22,r18
             # Armazena o length em MEMBUFF_LENGTH
-            stw r23,0(r20)
+            stw r21,0(r20)
             # Retorna para aguardar nova entrada
             br READ_POLL
+
+PARSER:
+    mov r4, r21
+    call PARSING
+    
+    br POLLING
 
 END:
     br END
