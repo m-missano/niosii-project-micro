@@ -25,6 +25,7 @@ int convert(){
 * r20 : led a ser aceso (lower)
 * r21 : estado atual dos leds vermelhos
 * r22 : led a ser aceso (upper)
+* r23 : addr de FLAG_ANIMA                               | r23 : content de FLAG_ANIMA
 */
 
 
@@ -49,7 +50,10 @@ ACENDER_LED:
     stw r22, 4(sp)
     stw r23, 0(sp)
     addi fp, sp, 32 
-
+    
+    movia r23, FLAG_ANIMA
+    ldw r23, 0(r23)
+    bne r23, r0, ANIMACAO_ATIVA 
     # Carrega o ponteiro atual do MEMBUFF
     mov r16, r4
     # Carrega o byte de dezena do MEMBUFF
@@ -69,13 +73,17 @@ IGNORA_DEZENA_ACENDER:
     sll r20, r20, r18  
 
     movia r19, LED_VERM
-
+    
+  
     # Carrega o estado atual dos leds
     ldwio r21, 0(r19)
+    
     # Aplica a máscara ao registrador de controle dos LEDs
     or r21, r21, r20   
 
     stwio r21, 0(r19)
+
+ANIMACAO_ATIVA:    
 
     # Carrega variavel de retorno
     movia r2, 0x2
@@ -93,6 +101,9 @@ IGNORA_DEZENA_ACENDER:
     ldw r23, 0(sp)
     addi sp, sp, 40
     ret  
+
+
+
 
 APAGAR_LED:
     # PROLOGO : Stack
