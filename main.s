@@ -1,5 +1,178 @@
 /* PSEUDOCODIGO 
 
+void rti(){
+
+} 
+*/
+
+/*                                            
+ * r16 : addr de FLAG_ANIMA                     
+ * r17 :           r17 : content de FLAG_ANIMA                                     
+ * r18 :           r18 : addr de LED_VERM
+ * r19 :           r19 : mascara do LED_VERM
+ * r20 :           r20 : mascara de valor final ROL       
+ * r21 :           r21 : addr de TIMER               | r21 : addr do switch
+ * r22 :           r22 : mascara para TIMER          | r22 : content do switch
+ * r23 :           r23 : mascara de valor final ROR
+ */
+
+/*
+
+   hex     |                    bin                           dec
+0xFFFF0000 | 0b.1111.1111.1111.1111.0000.0000.0000.0000 | undefined
+0x00008000 | 0b.0000.0000.0000.0000.1000.0000.0000.0000 | undefined
+0x0000000A | 0b.0000.0000.0000.0000.0000.0000.0000.1010 |    10
+*/
+
+.org 0x20
+RTI:
+    # PROLOGO SF
+    addi sp, sp, -40
+    stw ra, 36(sp)
+    stw fp, 32(sp)
+    stw r16, 28(sp)
+    stw r17, 24(sp) 
+    stw r18, 20(sp) 
+    stw r19, 16(sp) 
+    stw r20, 12(sp)
+    stw r21, 8(sp)
+    stw r22, 4(sp)
+    stw r23, 0(sp)
+    addi fp, sp, 32
+
+    # ALTERAR ISSO
+    rdctl et, ipending
+    beq et, r0, OTHER_EXCEPTIONS
+    subi ea, ea, 4
+    andi r17, et, 1
+    beq r17, r0, OTHER_INTERRUPTS
+    call EXT_IRQ0
+OTHER_INTERRUPTS:
+  br END_HANDLER:
+OTHER_EXCEPTIONS:
+
+END_HANDLER:
+
+   # EPILOGO : Stack
+    ldw ra, 36(sp)
+    ldw fp, 32(sp)
+    ldw r16, 28(sp)
+    ldw r17, 24(sp)
+    ldw r18, 20(sp)
+    ldw r19, 16(sp) 
+    ldw r20, 12(sp)
+    ldw r21, 8(sp)
+    ldw r22, 4(sp)
+    ldw r23, 0(sp)
+    addi sp, sp, 40
+
+    eret
+
+
+EXT_IRQ0:
+    
+    # PROLOGO SF
+    addi sp, sp, -40
+    stw ra, 36(sp)
+    stw fp, 32(sp)
+    stw r16, 28(sp)
+    stw r17, 24(sp) 
+    stw r18, 20(sp) 
+    stw r19, 16(sp) 
+    stw r20, 12(sp)
+    stw r21, 8(sp)
+    stw r22, 4(sp)
+    stw r23, 0(sp)
+    addi fp, sp, 32
+
+    # Aplica mascara do ultimo LED ROL: 0x00020000
+    orhi r20, r0, 0x0002
+    ori r20, r20, 0x0000
+
+    # Aplica mascara do ultimo LED ROR
+    orhi r23, r0, 0x0000
+    ori r23, r23, 0x0001
+
+    # Carrega FLAG_ANIMA
+    movia r16, FLAG_ANIMA
+    ldw r17, 0(r16) 
+    # Verificar flag do LED
+    beq r17, r0, LED_DESATIVADO
+
+    # Polling do switch para verificar sentido da animacao
+    # Animacao
+    # Carrega endereço do led vermelho
+    movia r18, LED_VERM
+
+    # Carrega mascara atual do LED
+    ldwio r19, 0(r18)
+
+    # Carregar switch
+    movia r21, SWITCH_BUTTON
+    ldwio r22, 0(r21)
+    # Verificar bit 0 - Aplica mascara
+    andi r22, r22, 0x1
+    
+    # Verifica se SWITCH_BUTTON esta acionado
+    bne r22, r0, ROTACAO_ANTIH 
+    ############ ROR ############
+    # Se SW0 = 0
+    # Verifica se chegou ao final dos LEDs ROL
+    beq r19, r23, REINICIA_ROR
+    # Realiza rotacao H - ROR
+    roli r19, r19, 31
+    br ARMAZENA_LED
+REINICIA_ROR:  
+    # Seta mascara inicial ROR
+    mov r19, r20
+    br ARMAZENA_LED
+
+
+ROTACAO_ANTIH:
+    ############ ROL ############
+    # Se SW0 = 1
+    # Verifica se chegou ao final dos LEDs ROL
+    beq r19, r20, REINICIA_ROL
+    # Realiza rotacao AH - ROL
+    roli r19, r19, 1
+    br ARMAZENA_LED
+REINICIA_ROL:  
+    # Seta mascara inicial ROL
+    mov r19, r23
+
+
+ARMAZENA_LED:
+        # Armazena nova mascara no LED
+        stwio r19, 0(r18)
+        # mascara para o bit do LED que sera aceso
+        # ror / rol dependendo do sentido
+        
+LED_DESATIVADO:
+
+    movia r22, 0x0003
+    movia r21, TIMER
+    stwio r22, (r21)
+
+    # EPILOGO : Stack
+    ldw ra, 36(sp)
+    ldw fp, 32(sp)
+    ldw r16, 28(sp)
+    ldw r17, 24(sp)
+    ldw r18, 20(sp)
+    ldw r19, 16(sp) 
+    ldw r20, 12(sp)
+    ldw r21, 8(sp)
+    ldw r22, 4(sp)
+    ldw r23, 0(sp)
+    addi sp, sp, 40
+    # Stack Frame
+
+    ret
+
+
+
+/* PSEUDOCODIGO 
+
 int main(){
     char addr_keyboard = "0x0000";
     char content_keyboard;
@@ -57,13 +230,22 @@ int main(){
 .equ TIMER, 0x10002000
 .equ FLAG_ANIMA, 0x00010000
 .equ FLAG_CHRONOS, 0x00010004
+.equ SWITCH_BUTTON, 0x10000040
 
 .global _start
 .global MEMBUFF
-.global LED_VERM
+
 .global TIMER
+
+.global LED_VERM
+.global LED_VERM_STATE
 .global FLAG_ANIMA
+
+.global SWITCH_BUTTON
+
 .global FLAG_CHRONOS
+# TODO: Verificar necessidade de switch .global
+
 
 .text
 
@@ -77,8 +259,8 @@ _start:
     mov r13, r0
     stw r13, 0(r8) 
     
-    # TIMER
-    movia r9, 1000000
+    # TIMER = 10000000
+    movia r9, 10000000 
     movia r10, TIMER
     andi r12, r9, 0xFFFF # baixo
     srli r11, r9, 16 # alto
@@ -234,5 +416,8 @@ MEMBUFF:
 # Quantidade de bytes escrito e ainda nao lidos em MEMBUFF
 MEMBUFF_LENGTH:
 .word 0
+# Armazena o estado de LED_VERM antes do inicio da animacao
+LED_VERM_STATE:
+.skip 32
 
 .end
