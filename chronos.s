@@ -1,17 +1,17 @@
 .global START_CHRONOS
-.global STOP_CHRONOS
+.global CANCEL_CHRONOS
 .global UPDATE_DISPLAY
 
 
 /*
 * r16 : addr de FLAG_CHRONUS
 * r17 : content de FLAG_CHRONUS
-* r18 : addr de ACCUMULATOR
+* r18 : addr de ACCUMULATOR        | r18: addr de FLAG_CHRONUS_STOPPED
 * r19 : addr de INTERRUPT_COUNTER
 * r20 : addr de TIMER
 * r21 : mascara de interrupcao de TIMER
-* r22 : 
-* r23 : 
+* r22 : addr de PUSH_BUTTON
+* r23 : mascara de habilitacao de interrupcao de PUSH_BUTTON
 */
 START_CHRONOS:
     # PROLOGO : Stack
@@ -32,33 +32,40 @@ START_CHRONOS:
     movia r16, FLAG_CHRONUS
     ldw r17, 0(r16)
 
+    # Carregamento de FLAG_CHRONUS_STOPPED
+    movia r18, FLAG_CHRONUS_STOPPED
+    # Seta FLAG_CHRONUS_STOPPED para False 
+    stw r0, 0(r18)
+
     # Carregamento de addr de ACCUMULATOR
     movia r18, ACCUMULATOR
-    
-    bne r17, r0, CRONOMETRO_ATIVO /*Se cronometo ja ativo, significa que ja esta sendo tratada interrupcao*/
         
-        # Seta a FLAG_CHRONUS como 1
-        addi r17, r0, 1
-        # Salva a flag de volta p/ memoria
-        stw r17, 0(r16) 
+    # Seta a FLAG_CHRONUS como 1
+    addi r17, r0, 1
+    # Salva a flag de volta p/ memoria
+    stw r17, 0(r16) 
 
-        # Seta content de ACCUMULATOR como 0
-        stw r0, 0(r18)
-        # Inicializa cronometro
-        call UPDATE_DISPLAY
-        
-        # Carrega addr de INTERRUPT_COUNTER
-        movia r19, INTERRUPT_COUNTER
-        # Reinicia INTERRUPT_COUNTER
-        stw r0, 0(r19)
+    # Seta content de ACCUMULATOR como 0
+    stw r0, 0(r18)
+    # Inicializa cronometro
+    call UPDATE_DISPLAY
 
-        # Carrega o TIMER
-        movia r20, TIMER
-        # Habilita interrupcao do dispositivo, cont e start 
-        addi r21,r0,0b111 
-        stwio r21,4(r20)
+    # Carrega addr de INTERRUPT_COUNTER
+    movia r19, INTERRUPT_COUNTER
+    # Reinicia INTERRUPT_COUNTER
+    stw r0, 0(r19)
 
-CRONOMETRO_ATIVO:
+    # Carrega addr de PUSH_BUTTON
+    movia r22, PUSH_BUTTON
+    # Habilita interrupcao do KEY1 de PUSH_BUTTON
+    movi r23, 0x02 # mascara KEY1 -> 0b0010
+    stwio r23, (r22)
+
+    # Carrega o TIMER
+    movia r20, TIMER
+    # Habilita interrupcao do dispositivo, cont e start 
+    addi r21,r0,0b111 
+    stwio r21,4(r20)
 
     # EPILOGO : Stack
     ldw ra, 36(sp)
@@ -78,7 +85,7 @@ CRONOMETRO_ATIVO:
 /*
 * r16 : addr de FLAG_CHRONUS
 * r17 : content de FLAG_CHRONUS
-* r18 : addr de ACCUMULATOR
+* r18 : addr de ACCUMULATOR      | 18 : addr de FLAG_CHRONUS_STOPPED
 * r19 : addr de SEG7DISPLAY
 * r20 : addr de TIMER
 * r21 : mascara de interrupcao de TIMER
@@ -86,7 +93,7 @@ CRONOMETRO_ATIVO:
 * r23 : 
 */
 
-STOP_CHRONOS:
+CANCEL_CHRONOS:
     # PROLOGO : Stack
     addi sp, sp, -40
     stw ra, 36(sp)
@@ -105,8 +112,14 @@ STOP_CHRONOS:
     movia r16, FLAG_CHRONUS
     ldw r17, 0(r16)
 
+    # Carregamento de FLAG_CHRONUS_STOPPED
+    movia r18, FLAG_CHRONUS_STOPPED
+    # Seta FLAG_CHRONUS_STOPPED para False
+    stw r0, 0(r18)
+    
     # Carregamento de addr de ACCUMULATOR
     movia r18, ACCUMULATOR
+
     # Carrega addr de SEG7DISPLAY
     movia r19, SEG7DISPLAY
 
@@ -120,6 +133,12 @@ STOP_CHRONOS:
 
         # Desliga SEG7DISPLAY
         stwio r0, 0(r19)
+
+        # Carrega addr de PUSH_BUTTON
+        movia r22, PUSH_BUTTON
+        # Desabilita interrupcao do KEY1 de PUSH_BUTTON
+        movi r23, 0x0 # mascara KEY1 -> 0b0000
+        stwio r23, (r22)
 
         # Carregamento de FLAG_ANIMA
         movia r16, FLAG_ANIMA

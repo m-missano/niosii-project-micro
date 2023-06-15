@@ -8,7 +8,7 @@ void rti(){
 /*                                            
  * r16:                      r16 : addr de FLAG_ANIMA          | r16 : addr de INTERRUPT_COUNTER              | r16 : addr de FLAG_CHRONUS                      
  * r17 :                     r17 : content de FLAG_ANIMA       | r17 : content de INTERRUPT_COUNTER           | r17 : content de FLAG_CHRONUS                                           
- * r18 :                     r18 : addr de LED_VERM            | r18 : resultado de INTERRUPT_COUNTER - 5
+ * r18 :                     r18 : addr de LED_VERM            | r18 : resultado de INTERRUPT_COUNTER - 5     | r18 : addr e content de FLAG_STOP_CHRONUS
  * r19 :                     r19 : mascara do LED_VERM
  * r20 :                     r20 : mascara de valor final ROL       
  * r21 :                     r21 : addr de TIMER               | r21 : addr do switch
@@ -48,7 +48,11 @@ RTI:
     beq r17, r0, OTHER_INTERRUPTS
     call EXT_IRQ0
 OTHER_INTERRUPTS:
-  br END_HANDLER:
+    andi r17, et, 2
+    beq r17, r0, ANOTHER_INTERRUPTS
+    call EXT_IRQ1
+ANOTHER_INTERRUPTS:
+    br END_HANDLER:
 OTHER_EXCEPTIONS:
 
 END_HANDLER:
@@ -158,7 +162,14 @@ LED_DESATIVADO:
     # Verificar FLAG_CHRONUS
     beq r17, r0, CHRONUS_DESATIVADO
 
-    # Se CHRONUS ativado
+    # Carrega FLAG_CHRONUS_STOPPED
+    movia r18, FLAG_CHRONUS_STOPPED
+    ldw r18, 0(r18)
+
+    # Se CHRONUS ativado, porém pausado, queremos pular para CHRONUS_NOT_UPDATE
+    bne r18, r0, CHRONUS_NOT_UPDATE
+
+    # Se CHRONUS ativado apenas
     # Carrega INTERRUPT_COUNTER de interrupcoes
     movia r16, INTERRUPT_COUNTER
     ldw r17, 0(r16) 
@@ -202,7 +213,72 @@ CHRONUS_DESATIVADO:
     ret
 
 
+/*
+* r16 : addr de FLAG_CHRONUS_STOPPED
+* r17 : content de FLAG_CHRONUS_STOPPED
+* r18 : addr de PUSH_BUTTON
+* r19 : 
+* r20 : 
+* r21 : 
+* r22 : 
+* r23 : 
+*/
+EXT_IRQ1:
+    # PROLOGO SF
+    addi sp, sp, -40
+    stw ra, 36(sp)
+    stw fp, 32(sp)
+    stw r16, 28(sp)
+    stw r17, 24(sp) 
+    stw r18, 20(sp) 
+    stw r19, 16(sp) 
+    stw r20, 12(sp)
+    stw r21, 8(sp)
+    stw r22, 4(sp)
+    stw r23, 0(sp)
+    addi fp, sp, 32
 
+    
+    movia r16, FLAG_CHRONUS_STOPPED
+    ldw r17, 0(r16)
+    bne r17, r0, CHRONUS_STOPPED
+    # Se contagem ativa pausar
+    # Guardar acumulador na memoria
+    # Guardar contagem de interrupções?
+    # Atualiza flag para indicar que está pausado
+    addi r18, r0, 1
+    stw r18, 0(r16)
+    br CONTINUE
+
+CHRONUS_STOPPED:
+    # Se contagem pausada, restaurar
+    # Pegar contador da memoria
+    stw r0, 0(r16)
+
+CONTINUE:
+    movia r18, PUSH_BUTTON
+    /*
+    ! Verificar versionamento do Altera (0xFFFF ou 0x0000)
+    */
+    movia r16, 0xFFFF
+    stwio r16, 4(r18) 
+
+    # EPILOGO : Stack
+    ldw ra, 36(sp)
+    ldw fp, 32(sp)
+    ldw r16, 28(sp)
+    ldw r17, 24(sp)
+    ldw r18, 20(sp)
+    ldw r19, 16(sp) 
+    ldw r20, 12(sp)
+    ldw r21, 8(sp)
+    ldw r22, 4(sp)
+    ldw r23, 0(sp)
+    addi sp, sp, 40
+    # Stack Frame
+
+    ret
+    
 /* PSEUDOCODIGO 
 
 int main(){
@@ -230,12 +306,12 @@ int main(){
 
 /*
  * r7  : caracter espaco em ASCI 0x20 ! ALTERAR ISSO DPOIS
- * r8  : addr de Data register                                                         | r8  : addr FLAG_ANIMA (temp)
+ * r8  : addr de Data register                                                         | r8  : 
  * r9  : content de Data register                                                      | r9  : valor numerico timer (temp) 
  * r10 : rvalid (bit de validacao de leitura)                                          | r10 : addr TIMER (temp)
  * r11 : content de Control register                                                   | r11 : counter start value (high) (temp)    | r11 : mascara para habilitar interrupcao no processador
  * r12 : wspace (espaco livre na FIFO de escrita)                                      | r12 : counter start value (low) (temp)
- * r13 : mascara para obter o wspace (16 bits superiores de Control register)          | r13 : content de FLAG_ANIMA (temp)
+ * r13 : mascara para obter o wspace (16 bits superiores de Control register)          | r13 : 
  * r14 : addr de TERMINAL_MESSAGE                                                 
  * r15 : content de TERMINAL_MESSAGE                                              
  * r16 : contador para o TERMINAL_MESSAGE_POLL                                    
@@ -275,7 +351,7 @@ while(1){
 .equ TIMER, 0x10002000
 .equ SWITCH_BUTTON, 0x10000040
 .equ SEG7DISPLAY, 0x10000020
-.equ PUSH_BUTTON, 0x1000005C
+.equ PUSH_BUTTON, 0x10000058
 
 .global _start
 .global MEMBUFF
@@ -289,8 +365,10 @@ while(1){
 # TODO: Verificar necessidade de switch .global
 .global SWITCH_BUTTON
 
-.global FLAG_CHRONOS
+.global FLAG_CHRONUS
+.global FLAG_CHRONUS_STOPPED
 .global INTERRUPT_COUNTER
+.global PUSH_BUTTON
 
 .global SEG7DISPLAY
 .global LOOKUPTABLE
@@ -300,12 +378,6 @@ while(1){
 _start:
     movia sp, STACK   /* armazena em sp o endereço da STACK */
     mov fp, sp        /* seta o frame pointer */
-    
-    # FLAG_ANIMACAO inicialmente eh zero
-    movia r8,FLAG_ANIMA
-    ldw r13, 0(r8)
-    mov r13, r0
-    stw r13, 0(r8) 
     
     # TIMER = 10000000
     movia r9, 10000000 
@@ -317,17 +389,12 @@ _start:
     stwio r11, 12(r10)
     
     # SETA INTERRUPCAO NO PROCESSADOR
-    # Habilitar o TIMER (IRQ0) no ienable
-    addi r11, r0, 1 # 0b0001
-    wrctl ienable, r11 # 0b0010 -> ienable
+    # Habilitar o TIMER (IRQ0) e PUSH_BUTTON (IRQ1) no ienable
+    addi r11, r0, 3 # 0b0011
+    wrctl ienable, r11 # 0b0011 -> ienable
     # Habilitar o bit PIE do status (processador)
+    movi r11, 1 # 0b0001
     wrctl status, r11  # interrupcao PIE
-
-    # TODO: Essa parte vai pro ANIMA_LED
-    # Habilita interrupcao do dispositivo, cont e start 
-    # addi r13,r0,0b111 
-    # stwio r13,4(r11)
-
 
     # Armazena o endereco de Data register
     movia r8, ADDR_DATAREG
@@ -358,7 +425,7 @@ POLLING:
     addi r22, r18, 0
 
     /*
-    ! Vericar como melhor essa parte (outras abordagens melhores)
+    ! Vericar como melhorar essa parte (outras abordagens melhores)
     ? Ler 4 bytes da mem e escrever 1 por 1 no terminal ?
     ? Possibilidade de criar subrotina para escrita (evitar repeticao) ?
     ! Verificar logica de fim de escrita (beq r15, r0, READ_POLL)
@@ -472,10 +539,16 @@ INTERRUPT_COUNTER:
 # Tabela de conversao para display de 7 segmentos
 LOOKUPTABLE:
 .word 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71
+# Armazena a atualizacao do cronometro 4b 4b 4b 4b -> decimal_min unidade_min decimal_seg unidade_seg
 ACCUMULATOR:
 .word 0
+# Flag que verifica se animação dos LEDs esta ou não ativa
 FLAG_ANIMA:
 .word 0
+# Flag que verifica se cronometro esta ou nao ativo
 FLAG_CHRONUS:
+.word 0
+# Flag que verifica se cronometro esta ou nao pausado
+FLAG_CHRONUS_STOPPED:
 .word 0
 .end

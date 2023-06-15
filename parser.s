@@ -146,7 +146,7 @@ LOAD_CODE:
     cmpeqi r21, r22, 0x0200
         bne r21, r0, CHAMA_START_CHRONOS
     cmpeqi r21, r22, 0x0201
-        bne r21, r0, CHAMA_STOP_CHRONOS
+        bne r21, r0, CHAMA_CANCEL_CHRONOS
     br END_SWITCH2
 
 CHAMA_ACENDER_LED:
@@ -183,8 +183,8 @@ CHAMA_START_CHRONOS:
     mov r8, r2
     br END_SWITCH
 
-CHAMA_STOP_CHRONOS:
-    call STOP_CHRONOS
+CHAMA_CANCEL_CHRONOS:
+    call CANCEL_CHRONOS
     # Retorna a quantidade de bytes avançados de MEMBUFF dentro da subrotina chamada
     mov r8, r2
     br END_SWITCH        
