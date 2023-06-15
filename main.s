@@ -6,14 +6,14 @@ void rti(){
 */
 
 /*                                            
- * r16 : addr de FLAG_ANIMA                     
- * r17 :           r17 : content de FLAG_ANIMA                                     
- * r18 :           r18 : addr de LED_VERM
- * r19 :           r19 : mascara do LED_VERM
- * r20 :           r20 : mascara de valor final ROL       
- * r21 :           r21 : addr de TIMER               | r21 : addr do switch
- * r22 :           r22 : mascara para TIMER          | r22 : content do switch
- * r23 :           r23 : mascara de valor final ROR
+ * r16:                      r16 : addr de FLAG_ANIMA          | r16 : addr de INTERRUPT_COUNTER              | r16 : addr de FLAG_CHRONUS                      
+ * r17 :                     r17 : content de FLAG_ANIMA       | r17 : content de INTERRUPT_COUNTER           | r17 : content de FLAG_CHRONUS                                           
+ * r18 :                     r18 : addr de LED_VERM            | r18 : resultado de INTERRUPT_COUNTER - 5
+ * r19 :                     r19 : mascara do LED_VERM
+ * r20 :                     r20 : mascara de valor final ROL       
+ * r21 :                     r21 : addr de TIMER               | r21 : addr do switch
+ * r22 :                     r22 : mascara para TIMER          | r22 : content do switch
+ * r23 :                     r23 : mascara de valor final ROR
  */
 
 /*
@@ -70,7 +70,9 @@ END_HANDLER:
 
 
 EXT_IRQ0:
-    
+    /*
+    * TODO: Colocar EXT_IRQ0 em rti.s
+    */
     # PROLOGO SF
     addi sp, sp, -40
     stw ra, 36(sp)
@@ -98,7 +100,7 @@ EXT_IRQ0:
     ldw r17, 0(r16) 
     # Verificar flag do LED
     beq r17, r0, LED_DESATIVADO
-
+    
     # Polling do switch para verificar sentido da animacao
     # Animacao
     # Carrega endereço do led vermelho
@@ -149,6 +151,36 @@ ARMAZENA_LED:
         
 LED_DESATIVADO:
 
+    # Carrega FLAG_CHRONUS
+    movia r16, FLAG_CHRONUS
+    ldw r17, 0(r16) 
+
+    # Verificar FLAG_CHRONUS
+    beq r17, r0, CHRONUS_DESATIVADO
+
+    # Se CHRONUS ativado
+    # Carrega INTERRUPT_COUNTER de interrupcoes
+    movia r16, INTERRUPT_COUNTER
+    ldw r17, 0(r16) 
+    # Incrementa INTERRUPT_COUNTER em 1
+    addi r17, r17, 1
+
+
+    # Verifica se INTERRUPT_COUNTER == 5
+    subi r18, r17, 5
+    bne r18, r0, CHRONUS_NOT_UPDATE
+
+    /* ATUALIZA CRONOMETRO */
+    call UPDATE_DISPLAY
+    mov r17, r0
+
+CHRONUS_NOT_UPDATE:
+
+    # Armazena INTERRUPT_COUNTER na memoria
+    stw r17, 0(r16) 
+
+CHRONUS_DESATIVADO:   
+
     movia r22, 0x0003
     movia r21, TIMER
     stwio r22, (r21)
@@ -198,12 +230,12 @@ int main(){
 
 /*
  * r7  : caracter espaco em ASCI 0x20 ! ALTERAR ISSO DPOIS
- * r8  : addr de Data register                                                         | r8  : addr FLAG_ANIMACAO (temp)
+ * r8  : addr de Data register                                                         | r8  : addr FLAG_ANIMA (temp)
  * r9  : content de Data register                                                      | r9  : valor numerico timer (temp) 
  * r10 : rvalid (bit de validacao de leitura)                                          | r10 : addr TIMER (temp)
  * r11 : content de Control register                                                   | r11 : counter start value (high) (temp)    | r11 : mascara para habilitar interrupcao no processador
  * r12 : wspace (espaco livre na FIFO de escrita)                                      | r12 : counter start value (low) (temp)
- * r13 : mascara para obter o wspace (16 bits superiores de Control register)          | r13 : content de FLAG_ANIMACAO (temp)
+ * r13 : mascara para obter o wspace (16 bits superiores de Control register)          | r13 : content de FLAG_ANIMA (temp)
  * r14 : addr de TERMINAL_MESSAGE                                                 
  * r15 : content de TERMINAL_MESSAGE                                              
  * r16 : contador para o TERMINAL_MESSAGE_POLL                                    
@@ -224,13 +256,26 @@ int main(){
 0x0000000A | 0b.0000.0000.0000.0000.0000.0000.0000.1010 |    10
 */
 
+
+/*
+while(1){
+    if(cont==5){
+        contSeg++;
+        cont = 0;
+    }
+        
+    sleep(200)
+    cont++;
+}
+ */
+
 .equ ADDR_DATAREG, 0x10001000
 .equ STACK, 0x01000000
 .equ LED_VERM, 0x10000000 
 .equ TIMER, 0x10002000
-.equ FLAG_ANIMA, 0x00010000
-.equ FLAG_CHRONOS, 0x00010004
 .equ SWITCH_BUTTON, 0x10000040
+.equ SEG7DISPLAY, 0x10000020
+.equ PUSH_BUTTON, 0x1000005C
 
 .global _start
 .global MEMBUFF
@@ -241,12 +286,15 @@ int main(){
 .global LED_VERM_STATE
 .global FLAG_ANIMA
 
+# TODO: Verificar necessidade de switch .global
 .global SWITCH_BUTTON
 
 .global FLAG_CHRONOS
-# TODO: Verificar necessidade de switch .global
+.global INTERRUPT_COUNTER
 
-
+.global SEG7DISPLAY
+.global LOOKUPTABLE
+.global ACCUMULATOR
 .text
 
 _start:
@@ -298,7 +346,6 @@ _start:
 
     # Armazena o codigo ASCII de Space
     movia r7, 0x20 
-
 
 
 # Polling
@@ -419,5 +466,16 @@ MEMBUFF_LENGTH:
 # Armazena o estado de LED_VERM antes do inicio da animacao
 LED_VERM_STATE:
 .skip 32
-
+# Contador que verifica em quais interrupcoes de TIMER, SEG7DISPLAY eh atualizado
+INTERRUPT_COUNTER:
+.word 0
+# Tabela de conversao para display de 7 segmentos
+LOOKUPTABLE:
+.word 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71
+ACCUMULATOR:
+.word 0
+FLAG_ANIMA:
+.word 0
+FLAG_CHRONUS:
+.word 0
 .end

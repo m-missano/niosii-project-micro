@@ -180,12 +180,12 @@ APAGAR_LED:
     movia r4, 0x0001
     ret*/
 
-START_CHRONOS:
+/*START_CHRONOS:
     movia r4, 0x0200
-    ret
+    ret*/
 
-STOP_CHRONOS:
+/*STOP_CHRONOS:
     movia r4, 0x0201
-    ret
+    ret*/
 
 .end

@@ -25,25 +25,6 @@ int main(){
 */
 
 /*
-* r8  : 
-* r9  :
-* r10 :
-* r11 : 
-* r12 : 
-* r13 : 
-* r14 : 
-* r15 : 
-* r16 : addr de FLAG_ANIMACAO (temp)
-* r17 : content de FLAG_ANIMACAO (temp)
-* r18 : addr de LED_VERM
-* r19 : mascara inicial de LED_VERM
-* r20 : addr de TIMER
-* r21 : mascara de interrupcao de TIMER
-* r22 : addr de LED_VERM_STATE
-* r23 : content de LED_VERM              | r23 : content de LED_VERM_STATE
-*/
-
-/*
 
    hex     |                    bin                           dec
 0xFFFF0000 | 0b.1111.1111.1111.1111.0000.0000.0000.0000 | undefined
@@ -55,6 +36,16 @@ int main(){
 .global STOP_ANIMA_LED
 
 
+/*
+* r16 : addr de FLAG_ANIMACAO
+* r17 : content de FLAG_ANIMACAO
+* r18 : addr de LED_VERM
+* r19 : mascara inicial de LED_VERM
+* r20 : addr de TIMER
+* r21 : mascara de interrupcao de TIMER
+* r22 : addr de LED_VERM_STATE
+* r23 : content de LED_VERM
+*/
 START_ANIMA_LED:
 
     # PROLOGO : Stack
@@ -123,6 +114,19 @@ ANIMACAO_ATIVA:
 
     ret
 
+
+
+/*
+* r16 : addr de FLAG_ANIMACAO (temp)     | r16 : addr de FLAG_CHRONUS
+* r17 : content de FLAG_ANIMACAO (temp)  | r17 : content de FLAG_CHRONUS
+* r18 : addr de LED_VERM
+* r19 : mascara inicial de LED_VERM
+* r20 : addr de TIMER
+* r21 : mascara de interrupcao de TIMER
+* r22 : addr de LED_VERM_STATE
+* r23 : content de LED_VERM_STATE
+*/
+
 STOP_ANIMA_LED:
     # PROLOGO : Stack
     addi sp, sp, -40
@@ -164,12 +168,19 @@ STOP_ANIMA_LED:
         # Armazena content em LED_VERM
         stwio r23, 0(r18)
 
-        # Carrega o timer
-        movia r20, TIMER
-        # Desabilita interrupcao do dispositivo, cont e start 
-        mov r21, r0
-        stwio r21,4(r20)
+        # Carregamento de FLAG_CHRONUS
+        movia r16, FLAG_CHRONUS
+        ldw r17, 0(r16)
 
+        # Verifica se Cronometro está ativado, nesse caso não desabilita interrupção
+        bne r17, r0, CRONOMETRO_ATIVADO
+            # Carrega o timer
+            movia r20, TIMER
+            # Desabilita interrupcao do dispositivo, cont e start 
+            mov r21, r0
+            stwio r21,4(r20)
+
+CRONOMETRO_ATIVADO:
 ANIMACAO_DESATIVADA: 
 
     # EPILOGO : Stack
