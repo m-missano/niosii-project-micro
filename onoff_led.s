@@ -32,7 +32,7 @@ int convert(){
 .global ACENDER_LED
 .global APAGAR_LED
 .global START_CHRONOS
-.global STOP_CHRONOS
+.global CANCEL_CHRONOS
 
 
 ACENDER_LED:
@@ -53,7 +53,7 @@ ACENDER_LED:
     
     movia r23, FLAG_ANIMA
     ldw r23, 0(r23)
-    bne r23, r0, ANIMACAO_ATIVA 
+    bne r23, r0, ANIMACAO_ATIVA_ONOFF 
     # Carrega o ponteiro atual do MEMBUFF
     mov r16, r4
     # Carrega o byte de dezena do MEMBUFF
@@ -83,7 +83,7 @@ IGNORA_DEZENA_ACENDER:
 
     stwio r21, 0(r19)
 
-ANIMACAO_ATIVA:    
+ANIMACAO_ATIVA_ONOFF:    
 
     # Carrega variavel de retorno
     movia r2, 0x2
@@ -184,8 +184,6 @@ APAGAR_LED:
     movia r4, 0x0200
     ret*/
 
-/*STOP_CHRONOS:
+/*CANCEL_CHRONOSS:
     movia r4, 0x0201
     ret*/
-
-.end

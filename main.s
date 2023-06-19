@@ -217,8 +217,8 @@ CHRONUS_DESATIVADO:
 * r16 : addr de FLAG_CHRONUS_STOPPED
 * r17 : content de FLAG_CHRONUS_STOPPED
 * r18 : addr de PUSH_BUTTON
-* r19 : mascara que verifica valor final do contador do cronometro
-* r20 : addr de ACCUMULATOR                                           | r20: content de ACCUMULATOR
+* r19 : 
+* r20 : 
 * r21 : 
 * r22 : 
 * r23 : 
@@ -263,9 +263,6 @@ CHRONUS_STOPPED:
 
 CONTINUE:
     movia r18, PUSH_BUTTON
-    /*
-    ! Verificar versionamento do Altera (0xFFFF ou 0x0000)
-    */
     movia r16, 0xFFFF
     stwio r16, 4(r18) 
 
@@ -386,7 +383,7 @@ _start:
     mov fp, sp        /* seta o frame pointer */
     
     # TIMER = 10000000
-    movia r9, 10000000 
+    movia r9, 100000 
     movia r10, TIMER
     andi r12, r9, 0xFFFF # baixo
     srli r11, r9, 16 # alto
@@ -431,7 +428,7 @@ POLLING:
     addi r22, r18, 0
 
     /*
-    ! Vericar como melhorar essa parte (outras abordagens melhores)
+    ! Vericar como melhor essa parte (outras abordagens melhores)
     ? Ler 4 bytes da mem e escrever 1 por 1 no terminal ?
     ? Possibilidade de criar subrotina para escrita (evitar repeticao) ?
     ! Verificar logica de fim de escrita (beq r15, r0, READ_POLL)
@@ -522,7 +519,6 @@ END:
 
 .org 0x500
 .data
-
 # Mensagem inicial a ser apresentada no terminal
 TERMINAL_MESSAGE:
 .asciz "Entre com a mensagem aqui: "
@@ -557,4 +553,5 @@ FLAG_CHRONUS:
 # Flag que verifica se cronometro esta ou nao pausado
 FLAG_CHRONUS_STOPPED:
 .word 0
+
 .end

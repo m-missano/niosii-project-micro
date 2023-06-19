@@ -145,14 +145,14 @@ CANCEL_CHRONOS:
         ldw r17, 0(r16)
 
         # Verifica se animacao dos LEDs está ativada, nesse caso não desabilita interrupção
-        bne r17, r0, ANIMACAO_ATIVA
+        bne r17, r0, ANIMACAO_ATIVAC
             # Carrega o timer
             movia r20, TIMER
             # Desabilita interrupcao do dispositivo, cont e start 
             mov r21, r0
             stwio r21,4(r20)
 
-ANIMACAO_ATIVA:
+ANIMACAO_ATIVAC:
 CRONOMETRO_DESATIVADO: 
 
     # EPILOGO : Stack

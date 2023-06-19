@@ -1,4 +1,3 @@
-
 /* PSEUDOCODIGO 
 
 int main(){
@@ -172,7 +171,7 @@ STOP_ANIMA_LED:
         movia r16, FLAG_CHRONUS
         ldw r17, 0(r16)
 
-        # Verifica se Cronometro está ativado, nesse caso não desabilita interrupção
+        # Verifica se Cronometro está aivado, nesse caso não desabilita interrupção
         bne r17, r0, CRONOMETRO_ATIVADO
             # Carrega o timer
             movia r20, TIMER
@@ -181,6 +180,7 @@ STOP_ANIMA_LED:
             stwio r21,4(r20)
 
 CRONOMETRO_ATIVADO:
+
 ANIMACAO_DESATIVADA: 
 
     # EPILOGO : Stack
