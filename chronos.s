@@ -212,6 +212,11 @@ UPDATE_DISPLAY:
     # Carrega content de ACCUMULATOR
     ldw r20, 0(r19)
 
+    movia r23, 0x6000
+    beq r20, r23, MAX_LIMITE_ON
+    movia r23, 0xFFFF
+    beq r20, r23, MAX_LIMIT_OFF
+
     /*
     TODO : colocar trecho abaixo em um loop
     ! Ainda em hexadecimal -> modificar para funcionar em 60 segundos e 60 minutos
@@ -222,6 +227,18 @@ UPDATE_DISPLAY:
     /*
     ? r18 -> 0x000A -> Update da dezena de segundos | unidade de segundos = 0
     */
+    movia r23, 0x000A
+    bne r18, r23, NAO_LIMITE_UNI_SEG
+    # aumenta 1 na dezena 
+    # reseta unidade de segundos para 0 
+    # 13:0A -> 13:00 -> 13:10
+    andi r20, r20, 0xFFF0
+    addi r20, r20, 0x0010
+    # Atualiza o elemento a ser adicionado ao SEG7DISPLAY
+    movia r22, 0x3F
+    br ROTACAO_UNI_SEG 
+
+NAO_LIMITE_UNI_SEG:
     # Multiplica r18 por 4 para encontrar o indice que aponta (endereço relativo) o elemento em LOOKUPTABLE
     add r18, r18, r18
     add r18, r18, r18
@@ -229,7 +246,9 @@ UPDATE_DISPLAY:
     add r18, r18, r16
     # Carrega o content do elemento de LOOKUPTABLE
     ldw r22, 0(r18)
-    # Adiciona elemento de LOOKUPTABLE ao content de SEG7DISPLAY
+
+ROTACAO_UNI_SEG:
+    # Adiciona elemento de LOOKUPTABLE ou advindo ao atingir o limite ao content de SEG7DISPLAY
     add r17, r17, r22
     # Realiza rotação para calcular o proximo valor de SEG7DISPLAY
     roli r17, r17, 24
@@ -239,13 +258,22 @@ UPDATE_DISPLAY:
     # Aplica mascara para obter a dezena de segundos
     andi r18, r20, 0x00F0
     /* 
-    ? r18 -> 0x0070 -> Update da unidade de minutos | dezena de segundos = 0
+    ? r18 -> 0x0060 -> Update da unidade de minutos | dezena de segundos = 0
     */
+    movia r23, 0x0060
+    bne r18, r23, NAO_LIMITE_DEZ_SEG
+    # aumenta 1 na dezena 
+    # reseta unidade de segundos para 0 
+    # 13:70 -> 13:00 -> 14:00
+    andi r20, r20, 0xFF0F
+    addi r20, r20, 0x0100
+    # Atualiza o elemento a ser adicionado ao SEG7DISPLAY
+    movia r22, 0x3F
+    br ROTACAO_DEZ_SEG 
+
+NAO_LIMITE_DEZ_SEG:
     # Desloca content de r18 para os 4 bits menos significativos para obter o indice relativo do elemento em LOOKUPTABLE
     srli r18, r18, 4
-    /* 
-    ? r18 -> 0x0007 -> Update da unidade de minutos | dezena de segundos = 0
-    */
     # Multiplica r18 por 4 para encontrar o indice que aponta (endereço relativo) o elemento em LOOKUPTABLE
     add r18, r18, r18
     add r18, r18, r18 
@@ -253,6 +281,8 @@ UPDATE_DISPLAY:
     add r18, r18, r16
     # Carrega o content do elemento de LOOKUPTABLE
     ldw r22, 0(r18)
+
+ROTACAO_DEZ_SEG:
     # Adiciona elemento de LOOKUPTABLE ao content de SEG7DISPLAY
     add r17, r17, r22
     # Realiza rotação para calcular o proximo valor de SEG7DISPLAY
@@ -265,11 +295,20 @@ UPDATE_DISPLAY:
     /* 
     ? r18 -> 0x0A00 -> Update da dezena de minutos | unidade de minutos = 0
     */
+    movia r23, 0x0A00
+    bne r18, r23, NAO_LIMITE_UNI_MIN
+    # aumenta 1 na dezena 
+    # reseta unidade de segundos para 0 
+    # 13:0A -> 13:00 -> 13:10
+    andi r20, r20, 0xF0FF
+    addi r20, r20, 0x1000
+    # Atualiza o elemento a ser adicionado ao SEG7DISPLAY
+    movia r22, 0x3F
+    br ROTACAO_UNI_MIN 
+
+NAO_LIMITE_UNI_MIN:
     # Desloca content de r18 para os 4 bits menos significativos para obter o indice relativo do elemento em LOOKUPTABLE
     srli r18, r18, 8
-    /* 
-    ? r18 -> 0x000A -> Update da dezena de minutos | unidade de minutos = 0
-    */
     # Multiplica r18 por 4 para encontrar o indice que aponta (endereço relativo) o elemento em LOOKUPTABLE
     add r18, r18, r18
     add r18, r18, r18 
@@ -277,6 +316,8 @@ UPDATE_DISPLAY:
     add r18, r18, r16
     # Carrega o content do elemento de LOOKUPTABLE
     ldw r22, 0(r18)
+
+ROTACAO_UNI_MIN:
     # Adiciona elemento de LOOKUPTABLE ao content de SEG7DISPLAY
     add r17, r17, r22
     # Realiza rotação para calcular o proximo valor de SEG7DISPLAY
@@ -288,11 +329,13 @@ UPDATE_DISPLAY:
     /* 
     ? r18 -> 0x7000 -> Reinicia
     */
+    movia r23, 0x6000
+    bne r18, r23, NAO_LIMITE_DEZ_MIN
+    br MAX_LIMIT_OFF 
+
+NAO_LIMITE_DEZ_MIN:
     # Desloca content de r18 para os 4 bits menos significativos para obter o indice relativo do elemento em LOOKUPTABLE
     srli r18, r18, 12
-    /* 
-    ? r18 -> 0x7000 -> Reinicia
-    */
     # Multiplica r18 por 4 para encontrar o indice que aponta (endereço relativo) o elemento em LOOKUPTABLE 
     add r18, r18, r18
     add r18, r18, r18
@@ -300,6 +343,8 @@ UPDATE_DISPLAY:
     add r18, r18, r16
     # Carrega o content do elemento de LOOKUPTABLE
     ldw r22, 0(r18)
+
+ROTACAO_DEZ_MIN:
     # Adiciona elemento de LOOKUPTABLE ao content de SEG7DISPLAY
     add r17, r17, r22
     # Realiza rotação para calcular o proximo valor de SEG7DISPLAY
@@ -309,8 +354,21 @@ UPDATE_DISPLAY:
     ! UPDATE: atualiza o acumulador 
     */
     addi r20, r20, 1
+    br MOSTRA_NO_DISPLAY    
+
+MAX_LIMITE_ON:
+    mov r17, r0
+    movia r20, 0xFFFF
+    br MOSTRA_NO_DISPLAY
+
+MAX_LIMIT_OFF:
+    mov r17, r0
+    orhi r17, r17, 0x7D3F
+    ori r17, r17, 0x3F3F
+    movia r20, 0x6000
+
+MOSTRA_NO_DISPLAY:
     stw r20, 0(r19)
-    
     # Carrega addr de SEG7DISPLAY
     movia r21, SEG7DISPLAY
     # Envia valores do contador para SEG7DISPLAY

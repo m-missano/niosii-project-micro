@@ -217,8 +217,8 @@ CHRONUS_DESATIVADO:
 * r16 : addr de FLAG_CHRONUS_STOPPED
 * r17 : content de FLAG_CHRONUS_STOPPED
 * r18 : addr de PUSH_BUTTON
-* r19 : 
-* r20 : 
+* r19 : mascara que verifica valor final do contador do cronometro
+* r20 : addr de ACCUMULATOR                                           | r20: content de ACCUMULATOR
 * r21 : 
 * r22 : 
 * r23 : 
@@ -248,6 +248,12 @@ EXT_IRQ1:
     # Atualiza flag para indicar que está pausado
     addi r18, r0, 1
     stw r18, 0(r16)
+
+    movia r19, 0xFFFF
+    movia r20, ACCUMULATOR
+    ldw r20, 0(r20)
+    bne r19, r20, CONTINUE 
+    call UPDATE_DISPLAY
     br CONTINUE
 
 CHRONUS_STOPPED:
